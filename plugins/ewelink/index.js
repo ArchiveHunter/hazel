@@ -92,7 +92,6 @@ class EweLinkSession {
     try {
       const deviceMap = await this.fetchAllDevices();
       for (const [deviceId, drivers] of this.subscribers) {
-        if (drivers.every(d => d.mode === 'lan')) continue;
         const params = deviceMap[deviceId];
         if (params) {
           for (const driver of drivers) driver.handleUpdate(params);
