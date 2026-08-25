@@ -85,10 +85,11 @@ input, select, textarea { font-family: inherit; }
   flex-shrink: 0;
 }
 
-.logo-icon {
-  font-size: 22px;
-  color: var(--accent);
-  line-height: 1;
+.logo-img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .logo-text {

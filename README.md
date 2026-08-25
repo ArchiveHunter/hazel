@@ -1,3 +1,5 @@
+<img src="hazel.png" alt="Hazel" width="120">
+
 # Hazel
 
 A custom HomeKit bridge built from scratch. Replaces Homebridge with a leaner, purpose-built alternative — no plugins to hunt down, no config UI quirks, no mystery restarts. Just a clean HAP bridge with a proper web interface.
