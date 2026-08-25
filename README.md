@@ -2,7 +2,7 @@
 
 A custom HomeKit bridge built from scratch. Replaces Homebridge with a leaner, purpose-built alternative — no plugins to hunt down, no config UI quirks, no mystery restarts. Just a clean HAP bridge with a proper web interface.
 
-**Built by [ArchiveHunter](https://github.com/ArchiveHunter) and Rowan (Claude Code)**
+**Built by [ArchiveHunter](https://github.com/ArchiveHunter) and Rowan**
 
 ---
 
