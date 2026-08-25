@@ -115,9 +115,9 @@ function lanEncrypt(payload, deviceKey) {
   return { data: encrypted.toString('base64'), iv: iv.toString('base64') };
 }
 
-async function lanSend(host, deviceId, deviceKey, payload) {
+async function lanSend(host, deviceId, deviceKey, payload, endpoint = 'switch') {
   const { data, iv } = lanEncrypt(payload, deviceKey);
-  await axios.post(`http://${host}:8081/zeroconf/switch`, {
+  await axios.post(`http://${host}:8081/zeroconf/${endpoint}`, {
     deviceid: deviceId,
     sequence: Date.now().toString(),
     selfApikey: '123',
@@ -212,7 +212,19 @@ class EweLinkDriver extends EventEmitter {
     const on = Boolean(value);
 
     if (this.mode === 'lan') {
-      await lanSend(this.host, this.deviceId, this.deviceKey, { switch: on ? 'on' : 'off' });
+      if (this.channel !== undefined) {
+        // Multi-channel (TX2C etc): must send all outlets at once via /zeroconf/switches
+        const siblings = this.session.subscribers.get(this.deviceId) || [];
+        const maxChannel = Math.max(...siblings.map(d => d.channel ?? 0));
+        const switches = [];
+        for (let i = 0; i <= maxChannel; i++) {
+          const sib = siblings.find(d => (d.channel ?? 0) === i);
+          switches.push({ switch: i === this.outlet ? (on ? 'on' : 'off') : (sib?.state.on ? 'on' : 'off'), outlet: i });
+        }
+        await lanSend(this.host, this.deviceId, this.deviceKey, { switches }, 'switches');
+      } else {
+        await lanSend(this.host, this.deviceId, this.deviceKey, { switch: on ? 'on' : 'off' });
+      }
     } else {
       // All cloud devices: use switches array.
       // Multi-channel (TX2C): include all sibling channels so nothing is disturbed.
