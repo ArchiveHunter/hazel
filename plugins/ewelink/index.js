@@ -223,7 +223,8 @@ class EweLinkDriver extends EventEmitter {
         }
         await lanSend(this.host, this.deviceId, this.deviceKey, { switches }, 'switches');
       } else {
-        await lanSend(this.host, this.deviceId, this.deviceKey, { switch: on ? 'on' : 'off' });
+        // Single-channel: firmware still uses switches[] format over LAN
+        await lanSend(this.host, this.deviceId, this.deviceKey, { switches: [{ switch: on ? 'on' : 'off', outlet: 0 }] }, 'switches');
       }
     } else {
       // All cloud devices: use switches array.
