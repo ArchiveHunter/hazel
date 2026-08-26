@@ -18,7 +18,9 @@ class WledDriver extends EventEmitter {
   }
 
   get capabilities() {
-    return ['power', 'brightness', 'color'];
+    const caps = ['power', 'brightness', 'color'];
+    if (Object.keys(this.presetMap).length > 0) caps.push('preset');
+    return caps;
   }
 
   async init() {
@@ -127,6 +129,14 @@ class WledDriver extends EventEmitter {
         clearTimeout(this._colorDebounce);
         this._colorDebounce = setTimeout(() => this._flushColor(), 80);
         return;
+      case 'color': {
+        // Accept hex string (#rrggbb) from scenes/automations
+        const r = parseInt(value.slice(1, 3), 16);
+        const g = parseInt(value.slice(3, 5), 16);
+        const b = parseInt(value.slice(5, 7), 16);
+        body = { on: true, seg: [{ col: [[r, g, b]] }] };
+        break;
+      }
       case 'preset': {
         const id = this.presetMap[value];
         if (id === undefined) throw new Error(`Unknown preset: ${value}`);

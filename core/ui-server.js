@@ -65,12 +65,12 @@ function startUiServer(registry, config, scheduler) {
   });
 
   app.get('/scenes', (req, res) => {
-    const devices = registry.getAll().map(d => ({ id: d.id, name: d.name, capabilities: d.capabilities }));
+    const devices = registry.getAll().map(d => ({ id: d.id, name: d.name, capabilities: d.capabilities, presets: d.presets || [] }));
     res.render('scenes', { scenes: scenesManager.getAll(), devices, page: 'scenes' });
   });
 
   app.get('/automations', (req, res) => {
-    const devices = registry.getAll().map(d => ({ id: d.id, name: d.name, capabilities: d.capabilities }));
+    const devices = registry.getAll().map(d => ({ id: d.id, name: d.name, capabilities: d.capabilities, presets: d.presets || [] }));
     res.render('automations', { automations: automationsManager.getAll(), devices, page: 'automations' });
   });
 

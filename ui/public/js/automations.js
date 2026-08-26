@@ -1,6 +1,69 @@
 (function () {
   var devices = window.DEVICES || [];
 
+  // ── Capabilities excluded from automation actions (read-only sensors) ──────
+  var EXCLUDED_CAPS = ['temperature', 'humidity', 'contact', 'motion'];
+
+  function settableCaps(caps) {
+    return caps.filter(function (c) { return EXCLUDED_CAPS.indexOf(c) === -1; });
+  }
+
+  function presetsFor(deviceId) {
+    var d = devices.find(function (x) { return x.id === deviceId; });
+    return d ? (d.presets || []) : [];
+  }
+
+  // ── Build the value input element for a given capability ──────────────────
+
+  function buildValEl(cap, value, presets) {
+    var el;
+    if (cap === 'power') {
+      el = document.createElement('select');
+      el.className = 'form-input act-val';
+      el.innerHTML = '<option value="true">On</option><option value="false">Off</option>';
+      el.value = (value === false || value === 'false') ? 'false' : 'true';
+    } else if (cap === 'brightness' || cap === 'colorTemp') {
+      el = document.createElement('input');
+      el.type = 'number'; el.min = '0'; el.max = '100';
+      el.className = 'form-input act-val';
+      el.value = (value !== undefined && value !== null) ? value : 100;
+    } else if (cap === 'color') {
+      el = document.createElement('input');
+      el.type = 'color';
+      el.className = 'form-input act-val';
+      el.value = value || '#ffffff';
+    } else if (cap === 'preset') {
+      el = document.createElement('select');
+      el.className = 'form-input act-val';
+      (presets || []).forEach(function (p) {
+        var o = document.createElement('option');
+        o.value = p; o.textContent = p;
+        if (p === value) o.selected = true;
+        el.appendChild(o);
+      });
+    } else if (cap === 'hvacMode') {
+      el = document.createElement('select');
+      el.className = 'form-input act-val';
+      ['cool', 'heat', 'auto', 'off'].forEach(function (m) {
+        var o = document.createElement('option');
+        o.value = m; o.textContent = m;
+        if (m === value) o.selected = true;
+        el.appendChild(o);
+      });
+    } else if (cap === 'targetTemperature') {
+      el = document.createElement('input');
+      el.type = 'number'; el.min = '16'; el.max = '30'; el.step = '0.5';
+      el.className = 'form-input act-val';
+      el.value = (value !== undefined && value !== null) ? value : 20;
+    } else {
+      el = document.createElement('input');
+      el.type = 'text';
+      el.className = 'form-input act-val';
+      el.value = value !== undefined ? value : '';
+    }
+    return el;
+  }
+
   // ── Modal helpers ──────────────────────────────────────────────────────────
 
   function openModal() { document.getElementById('auto-modal').classList.add('is-open'); }
@@ -27,74 +90,76 @@
   typeEl.addEventListener('change', updateTriggerFields);
   updateTriggerFields();
 
-  // ── Actions list ───────────────────────────────────────────────────────────
-
-  function capabilitiesFor(deviceId) {
-    var d = devices.find(function (x) { return x.id === deviceId; });
-    return d ? d.capabilities : ['power'];
-  }
-
-  function buildValueOptions(cap) {
-    if (cap === 'power') return '<option value="true">On</option><option value="false">Off</option>';
-    return '<option value="true">true</option><option value="false">false</option>';
-  }
+  // ── Action rows ───────────────────────────────────────────────────────────
 
   function addActionRow(device, capability, value) {
     device = device || (devices[0] && devices[0].id) || '';
-    capability = capability || 'power';
-    value = value !== undefined ? String(value) : 'true';
+    var devObj = devices.find(function (x) { return x.id === device; }) || devices[0] || {};
+    var caps = settableCaps(devObj.capabilities || ['power']);
+    capability = capability || caps[0] || 'power';
+    var presets = devObj.presets || [];
 
     var row = document.createElement('div');
     row.className = 'action-row';
 
-    var deviceSel = '<select class="form-input act-device">';
+    // Device select
+    var deviceSel = document.createElement('select');
+    deviceSel.className = 'form-input act-device';
     devices.forEach(function (d) {
-      deviceSel += '<option value="' + d.id + '"' + (d.id === device ? ' selected' : '') + '>' + d.name + '</option>';
+      var o = document.createElement('option');
+      o.value = d.id; o.textContent = d.name;
+      if (d.id === device) o.selected = true;
+      deviceSel.appendChild(o);
     });
-    deviceSel += '</select>';
 
-    var caps = capabilitiesFor(device);
-    var capSel = '<select class="form-input act-cap">';
+    // Capability select
+    var capSel = document.createElement('select');
+    capSel.className = 'form-input act-cap';
     caps.forEach(function (c) {
-      capSel += '<option value="' + c + '"' + (c === capability ? ' selected' : '') + '>' + c + '</option>';
+      var o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      if (c === capability) o.selected = true;
+      capSel.appendChild(o);
     });
-    capSel += '</select>';
 
-    var valSel = '<select class="form-input act-val">' + buildValueOptions(capability) + '</select>';
+    // Value input
+    var valEl = buildValEl(capability, value, presets);
 
-    row.innerHTML = deviceSel + capSel + valSel +
-      '<button class="btn-icon btn-remove-action" title="Remove">' +
-      '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="2" x2="14" y2="14"/><line x1="14" y1="2" x2="2" y2="14"/></svg></button>';
+    // Remove button
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-icon btn-remove-action';
+    removeBtn.title = 'Remove';
+    removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="2" x2="14" y2="14"/><line x1="14" y1="2" x2="2" y2="14"/></svg>';
 
-    // Set correct value after inserting value select
-    var list = document.getElementById('actions-list');
-    list.appendChild(row);
+    row.appendChild(deviceSel);
+    row.appendChild(capSel);
+    row.appendChild(valEl);
+    row.appendChild(removeBtn);
+    document.getElementById('actions-list').appendChild(row);
 
-    var valEl = row.querySelector('.act-val');
-    valEl.value = value;
-
-    // Device change → rebuild cap select, rebuild val select
-    row.querySelector('.act-device').addEventListener('change', function () {
-      var newCaps = capabilitiesFor(this.value);
-      var capEl = row.querySelector('.act-cap');
-      capEl.innerHTML = '';
+    // Device change → rebuild cap + val
+    deviceSel.addEventListener('change', function () {
+      var newDev = devices.find(function (x) { return x.id === deviceSel.value; }) || {};
+      var newCaps = settableCaps(newDev.capabilities || ['power']);
+      capSel.innerHTML = '';
       newCaps.forEach(function (c) {
-        var o = document.createElement('option'); o.value = c; o.textContent = c; capEl.appendChild(o);
+        var o = document.createElement('option'); o.value = c; o.textContent = c; capSel.appendChild(o);
       });
-      updateValSelect(row);
+      rebuildVal();
     });
 
-    row.querySelector('.act-cap').addEventListener('change', function () { updateValSelect(row); });
+    // Cap change → rebuild val
+    capSel.addEventListener('change', rebuildVal);
 
-    row.querySelector('.btn-remove-action').addEventListener('click', function () {
-      list.removeChild(row);
+    function rebuildVal() {
+      var newDev = devices.find(function (x) { return x.id === deviceSel.value; }) || {};
+      var newEl = buildValEl(capSel.value, undefined, newDev.presets || []);
+      row.replaceChild(newEl, row.querySelector('.act-val'));
+    }
+
+    removeBtn.addEventListener('click', function () {
+      document.getElementById('actions-list').removeChild(row);
     });
-  }
-
-  function updateValSelect(row) {
-    var cap = row.querySelector('.act-cap').value;
-    var valEl = row.querySelector('.act-val');
-    valEl.innerHTML = buildValueOptions(cap);
   }
 
   document.getElementById('btn-add-action').addEventListener('click', function () { addActionRow(); });
@@ -164,12 +229,17 @@
     trigger.days = days;
 
     var actions = [];
-    document.querySelectorAll('.action-row').forEach(function (row) {
-      var rawVal = row.querySelector('.act-val').value;
-      var val = rawVal === 'true' ? true : rawVal === 'false' ? false : rawVal;
+    document.querySelectorAll('#actions-list .action-row').forEach(function (row) {
+      var cap = row.querySelector('.act-cap').value;
+      var raw = row.querySelector('.act-val').value;
+      var val;
+      if (raw === 'true') val = true;
+      else if (raw === 'false') val = false;
+      else if (cap === 'brightness' || cap === 'colorTemp' || cap === 'targetTemperature') val = parseFloat(raw);
+      else val = raw;
       actions.push({
         device: row.querySelector('.act-device').value,
-        capability: row.querySelector('.act-cap').value,
+        capability: cap,
         value: val,
       });
     });
