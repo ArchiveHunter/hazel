@@ -101,6 +101,24 @@
 
       </div>
 
+      <!-- Location -->
+      <div class="card" style="margin-top:24px">
+        <div class="card-title">Location</div>
+        <p class="text-muted" style="font-size:13px;margin-bottom:16px">Used to calculate accurate sunrise and sunset times for automations.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:flex-end">
+          <div>
+            <label class="form-label">Latitude</label>
+            <input type="number" class="form-input" id="loc-lat" step="0.0001" value="<%= location.latitude || '' %>" placeholder="e.g. 51.5074">
+          </div>
+          <div>
+            <label class="form-label">Longitude</label>
+            <input type="number" class="form-input" id="loc-lon" step="0.0001" value="<%= location.longitude || '' %>" placeholder="e.g. -0.1278">
+          </div>
+          <button class="btn btn-primary" id="btn-save-location">Save</button>
+        </div>
+        <p class="text-muted" style="font-size:11px;margin-top:8px">Find your coordinates by searching your town name on Google Maps — right-click the pin and copy the coordinates.</p>
+      </div>
+
       <!-- Danger zone -->
       <div class="danger-zone" style="margin-top:24px">
         <div class="danger-zone-header">

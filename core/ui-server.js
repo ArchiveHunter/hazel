@@ -66,7 +66,7 @@ function startUiServer(registry, config, scheduler) {
 
   app.get('/system', (req, res) => {
     const cfg = configManager.load();
-    res.render('system', { bridge: cfg.bridge, page: 'system' });
+    res.render('system', { bridge: cfg.bridge, location: cfg.location || {}, page: 'system' });
   });
 
   // ─── API: devices ────────────────────────────────────────────────────────────
@@ -181,6 +181,20 @@ function startUiServer(registry, config, scheduler) {
   app.delete('/api/automations/:id', (req, res) => {
     try {
       automationsManager.delete(req.params.id);
+      if (scheduler) scheduler.reload();
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // ─── API: location ───────────────────────────────────────────────────────────
+
+  app.put('/api/location', (req, res) => {
+    try {
+      const { latitude, longitude } = req.body;
+      if (latitude === undefined || longitude === undefined) throw new Error('latitude and longitude required');
+      configManager.updateLocation(latitude, longitude);
       if (scheduler) scheduler.reload();
       res.json({ ok: true });
     } catch (e) {

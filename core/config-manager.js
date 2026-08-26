@@ -174,4 +174,10 @@ function getSchemas() {
   return PLUGIN_SCHEMAS;
 }
 
-module.exports = { load, save, addDevice, updateDevice, removeDevice, updatePluginGlobal, togglePlugin, getPlugins, getEnabledPluginNames, getSchemas };
+function updateLocation(latitude, longitude) {
+  const config = load();
+  config.location = { latitude: parseFloat(latitude), longitude: parseFloat(longitude) };
+  save(config);
+}
+
+module.exports = { load, save, addDevice, updateDevice, removeDevice, updatePluginGlobal, togglePlugin, getPlugins, getEnabledPluginNames, getSchemas, updateLocation };

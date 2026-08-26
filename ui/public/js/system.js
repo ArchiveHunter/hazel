@@ -51,6 +51,29 @@
   updateStats();
   var statsInterval = setInterval(updateStats, 5000);
 
+  // ── Location ──────────────────────────────────────────────────────────────────
+
+  var saveLocBtn = document.getElementById('btn-save-location');
+  if (saveLocBtn) {
+    saveLocBtn.addEventListener('click', function () {
+      var lat = parseFloat(document.getElementById('loc-lat').value);
+      var lon = parseFloat(document.getElementById('loc-lon').value);
+      if (isNaN(lat) || isNaN(lon)) { showToast('Enter valid coordinates', 'error'); return; }
+
+      fetch('/api/location', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude: lat, longitude: lon }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok) showToast('Location saved', 'success');
+          else showToast(data.error || 'Save failed', 'error');
+        })
+        .catch(function () { showToast('Save failed', 'error'); });
+    });
+  }
+
   // ── Restart ───────────────────────────────────────────────────────────────────
 
   if (restartBtn) {
