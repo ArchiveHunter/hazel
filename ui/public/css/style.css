@@ -1139,6 +1139,108 @@ input, select, textarea { font-family: inherit; }
 
 .empty-state p { font-size: 14px; }
 
+/* ── Scenes ──────────────────────────────────────────────────────────────────── */
+
+.scene-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.scene-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scene-card-body {
+  padding: 16px;
+  flex: 1;
+}
+
+.scene-name {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.scene-summary {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.scene-action-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.scene-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.scene-card-footer .btn-trigger-scene {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 5px 12px;
+}
+
+/* Scene strip on dashboard */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.section-link {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.scene-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scene-strip-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.scene-strip-btn:hover { background: var(--surface-2); border-color: var(--accent); }
+.scene-strip-btn:disabled { opacity: 0.5; cursor: default; }
+
 /* ── Automations ─────────────────────────────────────────────────────────────── */
 
 .day-picker {

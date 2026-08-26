@@ -26,10 +26,9 @@ class TasmotaDriver extends EventEmitter {
         timeout: 3000,
       });
       const on = (data.POWER ?? data.POWER1 ?? '').toLowerCase() === 'on';
-      if (on !== this.state.on) {
-        this.state.on = on;
-        this.emit('state', { ...this.state });
-      }
+      this.state.on = on;
+      // Always emit so the registry can track lastSeen; registry deduplicates for SSE
+      this.emit('state', { ...this.state });
     } catch {}
   }
 

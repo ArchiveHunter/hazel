@@ -1,18 +1,18 @@
 (function () {
   'use strict';
 
+  var STALE_MS = 30000; // 30s without a heartbeat → stale
+  var health = window.INITIAL_HEALTH || {};
+
   // ── Hex ↔ HSL conversion ─────────────────────────────────────────────────────
 
   function hexToHsl(hex) {
     var r = parseInt(hex.slice(1, 3), 16) / 255;
     var g = parseInt(hex.slice(3, 5), 16) / 255;
     var b = parseInt(hex.slice(5, 7), 16) / 255;
-    var max = Math.max(r, g, b);
-    var min = Math.min(r, g, b);
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
     var h, s, l = (max + min) / 2;
-    if (max === min) {
-      h = s = 0;
-    } else {
+    if (max === min) { h = s = 0; } else {
       var d = max - min;
       s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
       switch (max) {
@@ -34,9 +34,7 @@
     }).then(function (res) {
       if (!res.ok) return res.json().then(function (d) { throw new Error(d.error || 'Error'); });
       return res.json();
-    }).catch(function (err) {
-      showToast(err.message, 'error');
-    });
+    }).catch(function (err) { showToast(err.message, 'error'); });
   }
 
   // ── Card helpers ──────────────────────────────────────────────────────────────
@@ -78,12 +76,46 @@
     });
   }
 
+  // ── Health indicators ─────────────────────────────────────────────────────────
+
+  function applyHealth(deviceId, lastSeen) {
+    health[deviceId] = lastSeen;
+    var now = Date.now();
+    var dot = document.querySelector('.health-dot[data-device-id="' + CSS.escape(deviceId) + '"]');
+    var label = document.querySelector('.health-label[data-device-id="' + CSS.escape(deviceId) + '"]');
+    if (!dot) return;
+
+    var stale = !lastSeen || (now - lastSeen) > STALE_MS;
+    dot.classList.toggle('status-dot--offline', stale);
+    if (label) label.textContent = stale ? 'No response' : 'Online';
+  }
+
+  function applyAllHealth(healthMap) {
+    var onlineCount = 0;
+    Object.keys(healthMap).forEach(function (id) {
+      applyHealth(id, healthMap[id]);
+      if (healthMap[id] && (Date.now() - healthMap[id]) <= STALE_MS) onlineCount++;
+    });
+    var countEl = document.querySelector('.stat-pill--success');
+    if (countEl) countEl.lastChild.textContent = ' ' + onlineCount + ' online';
+  }
+
   // ── SSE state update ──────────────────────────────────────────────────────────
 
   window.handleStateUpdate = function (data) {
-    if (!data || data.type !== 'state' || !data.deviceId) return;
+    if (!data || !data.type) return;
+
+    if (data.type === 'health') {
+      applyAllHealth(data.health);
+      return;
+    }
+
+    if (data.type !== 'state' || !data.deviceId) return;
     var id = data.deviceId;
     var state = data.state || {};
+
+    // Update lastSeen for this device (state means it's alive)
+    applyHealth(id, Date.now());
 
     if (typeof state.on === 'boolean') setCardPower(id, state.on);
     if (typeof state.brightness === 'number') setCardBrightness(id, state.brightness);
@@ -97,17 +129,17 @@
 
   document.addEventListener('DOMContentLoaded', function () {
 
+    // Initialise health dots from server-side data
+    applyAllHealth(health);
+
     // Power buttons
     document.querySelectorAll('.power-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var id = btn.dataset.deviceId;
         var card = getCard(id);
         var isOn = card ? card.dataset.on === 'true' : false;
-        // Optimistic update
         setCardPower(id, !isOn);
-        postSet(id, 'power', !isOn).then(function (result) {
-          if (result && typeof result.on === 'boolean') setCardPower(id, result.on);
-        });
+        postSet(id, 'power', !isOn);
       });
     });
 
@@ -121,17 +153,14 @@
       });
     });
 
-    // Color swatches → trigger hidden color input
+    // Color swatches
     document.querySelectorAll('.color-swatch').forEach(function (swatch) {
       swatch.addEventListener('click', function () {
         var colorInput = document.querySelector('.color-input[data-device-id="' + CSS.escape(swatch.dataset.deviceId) + '"]');
         if (colorInput) colorInput.click();
       });
       swatch.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          swatch.click();
-        }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); swatch.click(); }
       });
     });
 
@@ -149,22 +178,29 @@
     // Preset buttons
     document.querySelectorAll('.preset-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var id = btn.dataset.deviceId;
-        var preset = btn.dataset.preset;
-        setCardPreset(id, preset);
-        postSet(id, 'preset', preset);
+        setCardPreset(btn.dataset.deviceId, btn.dataset.preset);
+        postSet(btn.dataset.deviceId, 'preset', btn.dataset.preset);
+      });
+    });
+
+    // Scene strip buttons
+    document.querySelectorAll('.scene-strip-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.dataset.sceneId;
+        var orig = btn.innerHTML;
+        btn.disabled = true;
+        fetch('/api/scenes/' + id + '/trigger', { method: 'POST' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { showToast(d.ok ? 'Scene triggered' : (d.error || 'Failed'), d.ok ? 'success' : 'error'); })
+          .catch(function () { showToast('Failed', 'error'); })
+          .finally(function () { btn.disabled = false; btn.innerHTML = orig; });
       });
     });
 
     // SSE
     var evtSource = new EventSource('/api/events');
     evtSource.onmessage = function (e) {
-      try {
-        var data = JSON.parse(e.data);
-        handleStateUpdate(data);
-      } catch (err) {
-        console.error('SSE parse error:', err);
-      }
+      try { handleStateUpdate(JSON.parse(e.data)); } catch (err) { console.error('SSE parse error:', err); }
     };
     evtSource.onerror = function () {
       console.warn('[Hazel] SSE disconnected — will auto-reconnect');

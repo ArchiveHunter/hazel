@@ -210,10 +210,9 @@ class EweLinkDriver extends EventEmitter {
     } else if (params.switch !== undefined) {
       on = params.switch === 'on';
     }
-    if (on !== undefined && on !== this.state.on) {
-      this.state.on = on;
-      this.emit('state', { ...this.state });
-    }
+    if (on !== undefined) this.state.on = on;
+    // Always emit so the registry can track lastSeen; registry deduplicates for SSE
+    this.emit('state', { ...this.state });
   }
 
   get(capability) {

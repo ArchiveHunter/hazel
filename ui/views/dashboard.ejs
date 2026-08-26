@@ -120,10 +120,10 @@
             <% } %>
 
             <div class="card-footer">
-              <span class="status-dot<%= hasState ? '' : ' status-dot--offline' %>"></span>
+              <span class="status-dot health-dot" data-device-id="<%= device.id %>"></span>
               <span><%= device.plugin %></span>
               <span class="separator">·</span>
-              <span><%= hasState ? 'Online' : 'Offline' %></span>
+              <span class="health-label" data-device-id="<%= device.id %>">–</span>
             </div>
 
           </div>
@@ -131,9 +131,29 @@
       </div>
       <% } %>
 
+      <% if (scenes.length > 0) { %>
+      <div class="section-header" style="margin-top:28px">
+        <span class="section-title">Scenes</span>
+        <a href="/scenes" class="section-link">Manage</a>
+      </div>
+      <div class="scene-strip">
+        <% scenes.forEach(function(scene) { %>
+        <button class="scene-strip-btn" data-scene-id="<%= scene.id %>">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><polygon points="8 1 10.5 5.5 16 6.4 12 10.3 12.9 15.8 8 13.2 3.1 15.8 4 10.3 0 6.4 5.5 5.5"/></svg>
+          <%= scene.name %>
+        </button>
+        <% }); %>
+      </div>
+      <% } %>
+
     </div>
   </main>
 </div>
+<script>
+  window.INITIAL_HEALTH = <%- JSON.stringify(
+    devices.reduce(function(acc, d) { acc[d.id] = d.lastSeen; return acc; }, {})
+  ) %>;
+</script>
 <script src="/js/main.js"></script>
 <script src="/js/dashboard.js"></script>
 </body>

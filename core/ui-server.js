@@ -4,6 +4,7 @@ const os = require('os');
 const logger = require('./logger');
 const configManager = require('./config-manager');
 const automationsManager = require('./automations-manager');
+const scenesManager = require('./scenes-manager');
 
 const startTime = Date.now();
 
@@ -26,6 +27,14 @@ function startUiServer(registry, config, scheduler) {
     for (const res of stateClients) { try { res.write(payload); } catch {} }
   });
 
+  // Broadcast health (lastSeen) for all devices every 15s
+  setInterval(() => {
+    const health = {};
+    for (const d of registry.getAll()) health[d.id] = d.lastSeen;
+    const payload = `data: ${JSON.stringify({ type: 'health', health })}\n\n`;
+    for (const res of stateClients) { try { res.write(payload); } catch {} }
+  }, 15000);
+
   logger.on('line', (entry) => {
     const payload = `data: ${JSON.stringify(entry)}\n\n`;
     for (const res of logClients) { try { res.write(payload); } catch {} }
@@ -36,7 +45,7 @@ function startUiServer(registry, config, scheduler) {
   app.get('/', (req, res) => res.redirect('/dashboard'));
 
   app.get('/dashboard', (req, res) => {
-    res.render('dashboard', { devices: registry.getAll(), page: 'dashboard' });
+    res.render('dashboard', { devices: registry.getAll(), scenes: scenesManager.getAll(), page: 'dashboard' });
   });
 
   app.get('/devices', (req, res) => {
@@ -53,6 +62,11 @@ function startUiServer(registry, config, scheduler) {
 
   app.get('/plugins', (req, res) => {
     res.render('plugins', { plugins: configManager.getPlugins(), schemas: configManager.getSchemas(), page: 'plugins' });
+  });
+
+  app.get('/scenes', (req, res) => {
+    const devices = registry.getAll().map(d => ({ id: d.id, name: d.name, capabilities: d.capabilities }));
+    res.render('scenes', { scenes: scenesManager.getAll(), devices, page: 'scenes' });
   });
 
   app.get('/automations', (req, res) => {
@@ -138,6 +152,38 @@ function startUiServer(registry, config, scheduler) {
   app.put('/api/plugins/:name/toggle', (req, res) => {
     try {
       configManager.togglePlugin(req.params.name, Boolean(req.body.enabled));
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // ─── API: scenes ─────────────────────────────────────────────────────────────
+
+  app.get('/api/scenes', (req, res) => res.json(scenesManager.getAll()));
+
+  app.post('/api/scenes', (req, res) => {
+    try { res.json(scenesManager.create(req.body)); }
+    catch (e) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.put('/api/scenes/:id', (req, res) => {
+    try { res.json(scenesManager.update(req.params.id, req.body)); }
+    catch (e) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.delete('/api/scenes/:id', (req, res) => {
+    try { scenesManager.delete(req.params.id); res.json({ ok: true }); }
+    catch (e) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.post('/api/scenes/:id/trigger', async (req, res) => {
+    const scene = scenesManager.getAll().find(s => s.id === req.params.id);
+    if (!scene) return res.status(404).json({ error: 'Scene not found' });
+    try {
+      for (const action of scene.actions) {
+        await registry.set(action.device, action.capability, action.value);
+      }
       res.json({ ok: true });
     } catch (e) {
       res.status(400).json({ error: e.message });
