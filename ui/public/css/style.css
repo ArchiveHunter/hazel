@@ -1139,6 +1139,55 @@ input, select, textarea { font-family: inherit; }
 
 .empty-state p { font-size: 14px; }
 
+/* ── Automations ─────────────────────────────────────────────────────────────── */
+
+.day-picker {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.day-btn {
+  cursor: pointer;
+}
+
+.day-btn input { display: none; }
+
+.day-btn span {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  transition: background 0.1s, color 0.1s;
+}
+
+.day-btn input:checked + span {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.action-row .form-input {
+  margin: 0;
+}
+
+.btn-sm {
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {

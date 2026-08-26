@@ -4,3 +4,4 @@ config.yaml
 config.yaml.bak
 *.bak
 .env
+automations.json

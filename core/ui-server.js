@@ -3,10 +3,11 @@ const path = require('path');
 const os = require('os');
 const logger = require('./logger');
 const configManager = require('./config-manager');
+const automationsManager = require('./automations-manager');
 
 const startTime = Date.now();
 
-function startUiServer(registry, config) {
+function startUiServer(registry, config, scheduler) {
   const app = express();
   const port = config.port || 3088;
 
@@ -52,6 +53,11 @@ function startUiServer(registry, config) {
 
   app.get('/plugins', (req, res) => {
     res.render('plugins', { plugins: configManager.getPlugins(), schemas: configManager.getSchemas(), page: 'plugins' });
+  });
+
+  app.get('/automations', (req, res) => {
+    const devices = registry.getAll().map(d => ({ id: d.id, name: d.name, capabilities: d.capabilities }));
+    res.render('automations', { automations: automationsManager.getAll(), devices, page: 'automations' });
   });
 
   app.get('/logs', (req, res) => {
@@ -132,6 +138,50 @@ function startUiServer(registry, config) {
   app.put('/api/plugins/:name/toggle', (req, res) => {
     try {
       configManager.togglePlugin(req.params.name, Boolean(req.body.enabled));
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // ─── API: automations ────────────────────────────────────────────────────────
+
+  app.get('/api/automations', (req, res) => res.json(automationsManager.getAll()));
+
+  app.post('/api/automations', (req, res) => {
+    try {
+      const auto = automationsManager.create(req.body);
+      if (scheduler) scheduler.reload();
+      res.json(auto);
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/automations/:id', (req, res) => {
+    try {
+      const auto = automationsManager.update(req.params.id, req.body);
+      if (scheduler) scheduler.reload();
+      res.json(auto);
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.put('/api/automations/:id/toggle', (req, res) => {
+    try {
+      const auto = automationsManager.toggle(req.params.id, Boolean(req.body.enabled));
+      if (scheduler) scheduler.reload();
+      res.json(auto);
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/automations/:id', (req, res) => {
+    try {
+      automationsManager.delete(req.params.id);
+      if (scheduler) scheduler.reload();
       res.json({ ok: true });
     } catch (e) {
       res.status(400).json({ error: e.message });

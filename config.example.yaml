@@ -1,3 +1,7 @@
+location:
+  latitude: 51.5      # your latitude  (used for sunrise/sunset automations)
+  longitude: -0.12    # your longitude
+
 bridge:
   name: Hazel
   username: "CC:22:3D:E3:CE:30"  # HAP bridge MAC — change if running multiple instances

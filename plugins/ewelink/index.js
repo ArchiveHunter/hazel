@@ -63,6 +63,7 @@ class EweLinkSession {
       headers: this._headers(),
       timeout: 10000,
     });
+    if (data.error === 401) throw new Error('eWeLink:401');
     const list = data.data?.thingList ?? [];
     // Build a map: deviceId → params
     const map = {};
@@ -75,12 +76,20 @@ class EweLinkSession {
   }
 
   async sendCommand(deviceId, params) {
-    const { data } = await axios.post(
-      `https://${this.httpHost}/v2/device/thing/status`,
-      { type: 1, id: deviceId, params },
-      { headers: this._headers(), timeout: 10000 },
-    );
-    if (data.error !== 0) throw new Error(`eWeLink command failed (${data.error}): ${data.msg || JSON.stringify(data)}`);
+    const res = await this._apiPost(`https://${this.httpHost}/v2/device/thing/status`, { type: 1, id: deviceId, params });
+    if (res.error !== 0) throw new Error(`eWeLink command failed (${res.error}): ${res.msg || JSON.stringify(res)}`);
+  }
+
+  // POST with automatic token refresh on 401
+  async _apiPost(url, body) {
+    const { data } = await axios.post(url, body, { headers: this._headers(), timeout: 10000 });
+    if (data.error === 401) {
+      console.log('[eWeLink] Token expired, re-logging in…');
+      await this.login();
+      const { data: data2 } = await axios.post(url, body, { headers: this._headers(), timeout: 10000 });
+      return data2;
+    }
+    return data;
   }
 
   startPolling() {
@@ -97,7 +106,12 @@ class EweLinkSession {
           for (const driver of drivers) driver.handleUpdate(params);
         }
       }
-    } catch {}
+    } catch (e) {
+      if (e.message === 'eWeLink:401') {
+        console.log('[eWeLink] Token expired during poll, re-logging in…');
+        try { await this.login(); } catch {}
+      }
+    }
   }
 
   destroy() {
