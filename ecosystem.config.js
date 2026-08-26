@@ -3,7 +3,7 @@ module.exports = {
     name: 'hazel',
     script: 'hazel.js',
     cwd: '/root/hazel',
-    instances: 1,
+    exec_mode: 'fork',
     autorestart: true,
     watch: false,
     env: { NODE_ENV: 'production' }

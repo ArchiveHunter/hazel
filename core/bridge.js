@@ -55,14 +55,18 @@ class HazelBridge {
   }
 
   start() {
-    this._bridge.publish({
+    const publishOpts = {
       username: this.config.username,
       pincode: this.config.pin,
       port: this.config.port || 51987,
       category: Categories.BRIDGE,
-    });
+    };
+    // Bind to a specific IP when the machine has multiple interfaces (tailscale, docker, etc.)
+    if (this.config.bind) publishOpts.bind = this.config.bind;
 
-    console.log(`[Hazel] Bridge "${this.config.name}" started on port ${this.config.port || 51987}`);
+    this._bridge.publish(publishOpts);
+
+    console.log(`[Hazel] Bridge "${this.config.name}" started on port ${publishOpts.port}`);
     console.log(`[Hazel] Add to HomeKit with PIN: ${this.config.pin}`);
   }
 }
