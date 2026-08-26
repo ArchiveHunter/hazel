@@ -6,6 +6,7 @@ const { HazelBridge } = require('./core/bridge');
 const { Registry } = require('./core/registry');
 const { startUiServer } = require('./core/ui-server');
 const Scheduler = require('./core/scheduler');
+const scenesManager = require('./core/scenes-manager');
 
 async function main() {
   const configPath = path.join(__dirname, 'config.yaml');
@@ -48,6 +49,11 @@ async function main() {
     }
     registry.register(deviceConfig.id, deviceConfig, driver);
     bridge.addDevice(deviceConfig, driver);
+  }
+
+  // Expose scenes as HomeKit switches (tap = trigger, auto-resets to off)
+  for (const scene of scenesManager.getAll()) {
+    bridge.addScene(scene, registry);
   }
 
   bridge.start();
