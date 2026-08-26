@@ -22,18 +22,31 @@ class WledDriver extends EventEmitter {
   }
 
   async init() {
-    const { data: presets } = await axios.get(`http://${this.host}/presets.json`, { timeout: 5000 });
-    for (const [id, preset] of Object.entries(presets)) {
-      if (preset.n) {
-        const numId = parseInt(id);
-        this.presetMap[preset.n] = numId;
-        this.idToPreset[numId] = preset.n;
+    // Retry a few times — WLED may still be booting when Hazel starts
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const { data: presets } = await axios.get(`http://${this.host}/presets.json`, { timeout: 5000 });
+        for (const [id, preset] of Object.entries(presets)) {
+          if (preset.n) {
+            const numId = parseInt(id);
+            this.presetMap[preset.n] = numId;
+            this.idToPreset[numId] = preset.n;
+          }
+        }
+        console.log(`[WLED:${this.name}] Loaded presets: ${Object.keys(this.presetMap).join(', ') || 'none'}`);
+
+        const { data: state } = await axios.get(`http://${this.host}/json/state`, { timeout: 5000 });
+        this._applyRaw(state);
+        break;
+      } catch {
+        if (attempt < 3) {
+          console.log(`[WLED:${this.name}] Unreachable, retrying in 5s (attempt ${attempt}/3)`);
+          await new Promise(r => setTimeout(r, 5000));
+        } else {
+          console.log(`[WLED:${this.name}] Unreachable at startup, will sync via WebSocket when online`);
+        }
       }
     }
-    console.log(`[WLED:${this.name}] Loaded presets: ${Object.keys(this.presetMap).join(', ') || 'none'}`);
-
-    const { data: state } = await axios.get(`http://${this.host}/json/state`, { timeout: 5000 });
-    this._applyRaw(state);
 
     this._connectWs();
   }
