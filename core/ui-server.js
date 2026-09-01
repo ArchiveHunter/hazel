@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const os = require('os');
+const QRCode = require('qrcode');
 const logger = require('./logger');
 const configManager = require('./config-manager');
 const automationsManager = require('./automations-manager');
@@ -8,7 +9,7 @@ const scenesManager = require('./scenes-manager');
 
 const startTime = Date.now();
 
-function startUiServer(registry, config, scheduler) {
+function startUiServer(registry, config, scheduler, bridge) {
   const app = express();
   const port = config.port || 3088;
 
@@ -78,9 +79,14 @@ function startUiServer(registry, config, scheduler) {
     res.render('logs', { page: 'logs' });
   });
 
-  app.get('/system', (req, res) => {
+  app.get('/system', async (req, res) => {
     const cfg = configManager.load();
-    res.render('system', { bridge: cfg.bridge, location: cfg.location || {}, page: 'system' });
+    let setupQR = null;
+    if (bridge) {
+      const uri = bridge.getSetupURI();
+      if (uri) setupQR = await QRCode.toDataURL(uri, { margin: 2, width: 180, color: { dark: '#000000', light: '#ffffff' } }).catch(() => null);
+    }
+    res.render('system', { bridge: cfg.bridge, location: cfg.location || {}, page: 'system', setupQR });
   });
 
   // ─── API: devices ────────────────────────────────────────────────────────────

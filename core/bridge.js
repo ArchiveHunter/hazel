@@ -69,6 +69,10 @@ class HazelBridge {
     console.log(`[Hazel] Bridge "${this.config.name}" started on port ${publishOpts.port}`);
     console.log(`[Hazel] Add to HomeKit with PIN: ${this.config.pin}`);
   }
+
+  getSetupURI() {
+    try { return this._bridge.setupURI(); } catch { return null; }
+  }
 }
 
 module.exports = { HazelBridge };

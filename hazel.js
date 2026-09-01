@@ -61,7 +61,7 @@ async function main() {
   const scheduler = new Scheduler(registry, config.location);
   scheduler.start();
 
-  startUiServer(registry, config.ui || {}, scheduler);
+  startUiServer(registry, config.ui || {}, scheduler, bridge);
 }
 
 main().catch(err => {
