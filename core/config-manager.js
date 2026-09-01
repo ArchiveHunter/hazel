@@ -20,8 +20,9 @@ const PLUGIN_SCHEMAS = {
     color: '#10b981',
     defaultEnabled: true,
     fields: [
-      { name: 'name', label: 'Device Name', type: 'text', required: true },
-      { name: 'host', label: 'IP Address',  type: 'text', required: true },
+      { name: 'name',    label: 'Device Name', type: 'text',   required: true },
+      { name: 'host',    label: 'IP Address',  type: 'text',   required: true },
+      { name: 'channel', label: 'Channel',     type: 'number', placeholder: 'Leave empty for single-relay' },
     ],
   },
   ewelink: {
