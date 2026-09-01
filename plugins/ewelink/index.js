@@ -220,45 +220,31 @@ class EweLinkDriver extends EventEmitter {
     return null;
   }
 
+  _buildSwitches(on) {
+    const siblings = this.session.subscribers.get(this.deviceId) || [];
+    const hasMultiple = siblings.some(d => d.channel !== undefined);
+    if (!hasMultiple) return [{ switch: on ? 'on' : 'off', outlet: 0 }];
+    const maxChannel = Math.max(...siblings.map(d => d.channel ?? 0));
+    return Array.from({ length: maxChannel + 1 }, (_, i) => {
+      const sib = siblings.find(d => (d.channel ?? 0) === i);
+      return { switch: i === this.outlet ? (on ? 'on' : 'off') : (sib?.state.on ? 'on' : 'off'), outlet: i };
+    });
+  }
+
   async set(capability, value) {
     if (capability !== 'power') return;
     const on = Boolean(value);
 
     if (this.mode === 'lan') {
-      if (this.channel !== undefined) {
-        // Multi-channel (TX2C etc): must send all outlets at once via /zeroconf/switches
-        const siblings = this.session.subscribers.get(this.deviceId) || [];
-        const maxChannel = Math.max(...siblings.map(d => d.channel ?? 0));
-        const switches = [];
-        for (let i = 0; i <= maxChannel; i++) {
-          const sib = siblings.find(d => (d.channel ?? 0) === i);
-          switches.push({ switch: i === this.outlet ? (on ? 'on' : 'off') : (sib?.state.on ? 'on' : 'off'), outlet: i });
-        }
+      try {
+        const switches = this._buildSwitches(on);
         await lanSend(this.host, this.deviceId, this.deviceKey, { switches }, 'switches');
-      } else {
-        // Single-channel: firmware still uses switches[] format over LAN
-        await lanSend(this.host, this.deviceId, this.deviceKey, { switches: [{ switch: on ? 'on' : 'off', outlet: 0 }] }, 'switches');
+      } catch (e) {
+        console.warn(`[eWeLink:${this.name}] LAN unreachable (${e.code || e.message}), falling back to cloud`);
+        await this.session.sendCommand(this.deviceId, { switches: this._buildSwitches(on) });
       }
     } else {
-      // All cloud devices: use switches array.
-      // Multi-channel (TX2C): include all sibling channels so nothing is disturbed.
-      // Single-channel (MINIR4): send just outlet 0.
-      const siblings = this.session.subscribers.get(this.deviceId) || [];
-      const hasMultiple = siblings.some(d => d.channel !== undefined);
-
-      let switches;
-      if (hasMultiple) {
-        const maxChannel = Math.max(...siblings.map(d => d.channel ?? 0));
-        switches = [];
-        for (let i = 0; i <= maxChannel; i++) {
-          const sib = siblings.find(d => (d.channel ?? 0) === i);
-          switches.push({ switch: i === this.outlet ? (on ? 'on' : 'off') : (sib?.state.on ? 'on' : 'off'), outlet: i });
-        }
-      } else {
-        switches = [{ switch: on ? 'on' : 'off', outlet: 0 }];
-      }
-
-      await this.session.sendCommand(this.deviceId, { switches });
+      await this.session.sendCommand(this.deviceId, { switches: this._buildSwitches(on) });
     }
 
     this.state.on = on;
