@@ -57,32 +57,36 @@ class DaikinDriver extends EventEmitter {
   }
 
   async set(capability, value) {
-    const { data } = await axios.get(`http://${this.host}/aircon/get_control_info`, { timeout: 5000 });
-    const c = parseKV(data);
+    try {
+      const { data } = await axios.get(`http://${this.host}/aircon/get_control_info`, { timeout: 5000 });
+      const c = parseKV(data);
 
-    if (capability === 'power') {
-      c.pow = value ? '1' : '0';
-    } else if (capability === 'hvacMode') {
-      if (value === 0) {
-        c.pow = '0';
-      } else {
-        c.pow = '1';
-        c.mode = HAP_TO_DAIKIN_MODE[value] || '6';
+      if (capability === 'power') {
+        c.pow = value ? '1' : '0';
+      } else if (capability === 'hvacMode') {
+        if (value === 0) {
+          c.pow = '0';
+        } else {
+          c.pow = '1';
+          c.mode = HAP_TO_DAIKIN_MODE[value] || '6';
+        }
+      } else if (capability === 'targetTemperature') {
+        c.stemp = String(value);
       }
-    } else if (capability === 'targetTemperature') {
-      c.stemp = String(value);
+
+      const params = new URLSearchParams({
+        pow:    c.pow   || '0',
+        mode:   c.mode  || '6',
+        stemp:  c.stemp || '22',
+        shum:   c.shum  || '0',
+        f_rate: c.f_rate || 'A',
+        f_dir:  c.f_dir || '0',
+      });
+
+      await axios.get(`http://${this.host}/aircon/set_control_info?${params.toString()}`, { timeout: 5000 });
+    } catch (e) {
+      console.warn(`[Daikin:${this.name}] Command failed (${e.code || e.message})`);
     }
-
-    const params = new URLSearchParams({
-      pow:    c.pow   || '0',
-      mode:   c.mode  || '6',
-      stemp:  c.stemp || '22',
-      shum:   c.shum  || '0',
-      f_rate: c.f_rate || 'A',
-      f_dir:  c.f_dir || '0',
-    });
-
-    await axios.get(`http://${this.host}/aircon/set_control_info?${params.toString()}`, { timeout: 5000 });
   }
 
   destroy() {

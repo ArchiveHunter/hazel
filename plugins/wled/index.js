@@ -146,7 +146,11 @@ class WledDriver extends EventEmitter {
     }
 
     if (Object.keys(body).length) {
-      await axios.post(`http://${this.host}/json/state`, body, { timeout: 3000 });
+      try {
+        await axios.post(`http://${this.host}/json/state`, body, { timeout: 3000 });
+      } catch (e) {
+        console.warn(`[WLED:${this.name}] Command failed (${e.code || e.message})`);
+      }
     }
   }
 
@@ -156,10 +160,14 @@ class WledDriver extends EventEmitter {
     const rgb = hslToRgb(h, s);
     this.state.hue = h;
     this._pendingHue = null;
-    await axios.post(`http://${this.host}/json/state`, {
-      on: true,
-      seg: [{ col: [rgb] }]
-    }, { timeout: 3000 }).catch(console.error);
+    try {
+      await axios.post(`http://${this.host}/json/state`, {
+        on: true,
+        seg: [{ col: [rgb] }]
+      }, { timeout: 3000 });
+    } catch (e) {
+      console.warn(`[WLED:${this.name}] Color flush failed (${e.code || e.message})`);
+    }
   }
 
   destroy() {

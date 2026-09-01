@@ -116,32 +116,35 @@ class ShellyDriver extends EventEmitter {
   }
 
   async set(capability, value) {
-    if (this.generation === 1) {
-      if (this.component === 'relay') {
-        const params = new URLSearchParams({ turn: value ? 'on' : 'off' });
-        await axios.post(`http://${this.host}/relay/${this.channel}`, params.toString(), {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          timeout: 5000,
-        });
+    try {
+      if (this.generation === 1) {
+        if (this.component === 'relay') {
+          const params = new URLSearchParams({ turn: value ? 'on' : 'off' });
+          await axios.post(`http://${this.host}/relay/${this.channel}`, params.toString(), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: 5000,
+          });
+        } else {
+          const params = new URLSearchParams({ turn: this.state.on ? 'on' : 'off' });
+          if (capability === 'power') params.set('turn', value ? 'on' : 'off');
+          if (capability === 'brightness') params.set('brightness', String(value));
+          await axios.post(`http://${this.host}/light/${this.channel}`, params.toString(), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: 5000,
+          });
+        }
       } else {
-        const params = new URLSearchParams({ turn: this.state.on ? 'on' : 'off' });
-        if (capability === 'power') params.set('turn', value ? 'on' : 'off');
-        if (capability === 'brightness') params.set('brightness', String(value));
-        await axios.post(`http://${this.host}/light/${this.channel}`, params.toString(), {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          timeout: 5000,
-        });
+        if (this.component === 'light') {
+          const p = { id: this.channel };
+          if (capability === 'power') p.on = Boolean(value);
+          if (capability === 'brightness') p.brightness = value;
+          await this._sendRpc('Light.Set', p);
+        } else {
+          await this._sendRpc('Switch.Set', { id: this.channel, on: Boolean(value) });
+        }
       }
-    } else {
-      if (this.component === 'light') {
-        const method = 'Light.Set';
-        const p = { id: this.channel };
-        if (capability === 'power') p.on = Boolean(value);
-        if (capability === 'brightness') p.brightness = value;
-        await this._sendRpc(method, p);
-      } else {
-        await this._sendRpc('Switch.Set', { id: this.channel, on: Boolean(value) });
-      }
+    } catch (e) {
+      console.warn(`[Shelly:${this.name}] Command failed (${e.code || e.message})`);
     }
   }
 
