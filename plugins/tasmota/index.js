@@ -6,12 +6,18 @@ class TasmotaDriver extends EventEmitter {
     super();
     this.host = config.host;
     this.name = config.name;
+    this.channel = config.channel; // undefined = single, 1/2/3/4 = multi-gang
     this.state = { on: false };
     this._pollTimer = null;
   }
 
   get capabilities() {
     return ['power'];
+  }
+
+  // POWER key for this channel: single-relay = 'POWER', multi-gang = 'POWER1', 'POWER2' etc.
+  get _powerKey() {
+    return this.channel !== undefined ? `POWER${this.channel}` : 'POWER';
   }
 
   async init() {
@@ -25,9 +31,9 @@ class TasmotaDriver extends EventEmitter {
         params: { cmnd: 'Power' },
         timeout: 3000,
       });
-      const on = (data.POWER ?? data.POWER1 ?? '').toLowerCase() === 'on';
-      this.state.on = on;
-      // Always emit so the registry can track lastSeen; registry deduplicates for SSE
+      // Single-relay devices report POWER; multi-gang report POWER1, POWER2, etc.
+      const val = data[this._powerKey] ?? data.POWER ?? data.POWER1 ?? '';
+      this.state.on = val.toLowerCase() === 'on';
       this.emit('state', { ...this.state });
     } catch {}
   }
@@ -39,13 +45,17 @@ class TasmotaDriver extends EventEmitter {
 
   async set(capability, value) {
     if (capability !== 'power') return;
-    const cmd = value ? 'Power ON' : 'Power OFF';
-    await axios.get(`http://${this.host}/cm`, {
-      params: { cmnd: cmd },
-      timeout: 3000,
-    });
-    this.state.on = Boolean(value);
-    this.emit('state', { ...this.state });
+    const cmd = `${this._powerKey} ${value ? 'ON' : 'OFF'}`;
+    try {
+      await axios.get(`http://${this.host}/cm`, {
+        params: { cmnd: cmd },
+        timeout: 3000,
+      });
+      this.state.on = Boolean(value);
+      this.emit('state', { ...this.state });
+    } catch (e) {
+      console.warn(`[Tasmota:${this.name}] Command failed (${e.code || e.message})`);
+    }
   }
 
   destroy() {
